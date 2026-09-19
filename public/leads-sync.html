@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leads Sync</title>
+<style>
+  :root {
+    --ink: #1c2128;
+    --paper: #fbfaf8;
+    --line: #d8d4cc;
+    --panel: #f2f0ea;
+    --accent: #3b5f4f;
+    --accent-dim: #6d8a7c;
+    --warn: #a3572f;
+    --err: #b5432f;
+    --ok: #3b5f4f;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+  }
+
+  header {
+    padding: 2.25rem 2rem 1.25rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  header h1 {
+    margin: 0 0 0.35rem;
+    font-size: 1.65rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  header p {
+    margin: 0;
+    color: #5c5850;
+    max-width: 62ch;
+    font-size: 0.95rem;
+  }
+
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 1.75rem 2rem 4rem;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 1.75rem;
+  }
+
+  @media (max-width: 820px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  section.panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1.25rem;
+  }
+
+  .panel h2 {
+    margin: 0 0 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  label {
+    display: block;
+    font-size: 0.8rem;
+    color: #5c5850;
+    margin: 0.85rem 0 0.3rem;
+  }
+
+  label:first-of-type { margin-top: 0; }
+
+  input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--paper);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+
+  input:focus {
+    outline: 2px solid var(--accent-dim);
+    outline-offset: 1px;
+  }
+
+  .row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .field-hint {
+    font-size: 0.72rem;
+    color: #8a8578;
+    margin-top: 0.2rem;
+  }
+
+  button {
+    font-family: var(--sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+  }
+
+  button.primary {
+    background: var(--accent);
+    color: #fff;
+    width: 100%;
+    margin-top: 1.25rem;
+  }
+
+  button.primary:disabled {
+    background: #9fada4;
+    cursor: not-allowed;
+  }
+
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink);
+  }
+
+  button.secondary:disabled {
+    color: #b0aca2;
+    cursor: not-allowed;
+  }
+
+  .status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.75rem;
+  }
+
+  .status-row h2 { margin: 0; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .stat {
+    border: 1px solid var(--line);
+    background: var(--paper);
+    border-radius: 4px;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .stat .n {
+    font-family: var(--mono);
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: block;
+  }
+
+  .stat .l {
+    font-size: 0.72rem;
+    color: #5c5850;
+  }
+
+  .stat.err .n { color: var(--err); }
+  .stat.ok .n { color: var(--ok); }
+
+  progress {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    margin-bottom: 1rem;
+  }
+  progress::-webkit-progress-bar { background: var(--line); border-radius: 3px; }
+  progress::-webkit-progress-value { background: var(--accent); border-radius: 3px; }
+  progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
+
+  #log {
+    height: 190px;
+    overflow-y: auto;
+    background: #14181c;
+    color: #d7dce0;
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1.25rem;
+  }
+
+  #log .l-warn { color: #e0a468; }
+  #log .l-err { color: #e28b7b; }
+  #log .l-ok { color: #8fd0a9; }
+
+  .table-wrap {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: auto;
+    max-height: 420px;
+    background: var(--paper);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--line);
+    font-weight: 600;
+  }
+
+  tbody td {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid #ece9e2;
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  tbody tr:hover { background: #f5f3ee; }
+
+  .empty-state {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: #8a8578;
+    font-size: 0.85rem;
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.6rem;
+    margin: 1rem 0 1.25rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Leads Sync</h1>
+  <p>Pulls every page of <code>/leads</code>, running requests concurrently, backing off on rate limits, and de-duplicating by email — all in this browser tab.</p>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Connection</h2>
+
+    <label for="baseUrl">API base URL</label>
+    <input type="text" id="baseUrl" placeholder="https://your-api.example.com" value="">
+    <div class="field-hint">Leads are fetched from <code>&lt;base URL&gt;/leads</code></div>
+
+    <label for="token">API token</label>
+    <input type="password" id="token" placeholder="Sent as Authorization: Bearer &hellip; and X-API-Token">
+
+    <div class="row2">
+      <div>
+        <label for="limit">Limit</label>
+        <input type="number" id="limit" value="100" min="1" max="500">
+      </div>
+      <div>
+        <label for="concurrency">Concurrency</label>
+        <input type="number" id="concurrency" value="15" min="1" max="30">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div>
+        <label for="rateMax">Rate limit — max requests</label>
+        <input type="number" id="rateMax" value="60" min="1">
+      </div>
+      <div>
+        <label for="rateWindow">per window (seconds)</label>
+        <input type="number" id="rateWindow" value="60" min="1">
+      </div>
+    </div>
+
+    <label for="maxPages">Fallback max pages</label>
+    <input type="number" id="maxPages" value="500" min="1">
+    <div class="field-hint">Used only if the response has no <code>meta.last_page</code></div>
+
+    <button class="primary" id="startBtn">Start sync</button>
+    <button class="secondary" id="stopBtn" style="width:100%; margin-top:0.5rem;" disabled>Stop</button>
+  </section>
+
+  <section class="panel">
+    <div class="status-row">
+      <h2>Progress</h2>
+      <span id="phaseLabel" style="font-size:0.78rem; color:#5c5850;">Idle</span>
+    </div>
+
+    <progress id="progressBar" value="0" max="1"></progress>
+
+    <div class="stats">
+      <div class="stat"><span class="n" id="statPages">0 / 0</span><span class="l">Pages fetched</span></div>
+      <div class="stat ok"><span class="n" id="statLeads">0</span><span class="l">Unique leads</span></div>
+      <div class="stat"><span class="n" id="statRetries">0</span><span class="l">Retries</span></div>
+      <div class="stat err"><span class="n" id="statFailed">0</span><span class="l">Failed pages</span></div>
+    </div>
+
+    <div id="log"></div>
+
+    <div class="actions">
+      <button class="secondary" id="downloadJson" disabled>Download JSON</button>
+      <button class="secondary" id="downloadCsv" disabled>Download CSV</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>First name</th><th>Last name</th><th>Email</th><th>Company</th>
+            <th>Title</th><th>Location</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState">No leads fetched yet.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  const startBtn = $('startBtn');
+  const stopBtn = $('stopBtn');
+  const logEl = $('log');
+  const phaseLabel = $('phaseLabel');
+  const progressBar = $('progressBar');
+  const statPages = $('statPages');
+  const statLeads = $('statLeads');
+  const statRetries = $('statRetries');
+  const statFailed = $('statFailed');
+  const resultsBody = $('resultsBody');
+  const emptyState = $('emptyState');
+  const downloadJsonBtn = $('downloadJson');
+  const downloadCsvBtn = $('downloadCsv');
+
+  let stopRequested = false;
+  let leadsByEmail = new Map();
+  let requestTimestamps = []; // sliding-window rate limiter, in-memory
+
+  function log(msg, level) {
+    const line = document.createElement('div');
+    if (level) line.className = 'l-' + level;
+    const t = new Date().toLocaleTimeString();
+    line.textContent = `[${t}] ${msg}`;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // Sliding-window throttle, mirroring the Redis sorted-set approach server-side.
+  async function throttle(maxRequests, windowSeconds) {
+    while (true) {
+      const now = Date.now();
+      const windowStart = now - windowSeconds * 1000;
+      requestTimestamps = requestTimestamps.filter((t) => t > windowStart);
+
+      if (requestTimestamps.length < maxRequests) {
+        requestTimestamps.push(now);
+        return;
+      }
+
+      const oldest = requestTimestamps[0];
+      const waitMs = Math.max(50, oldest + windowSeconds * 1000 - now);
+      await sleep(waitMs);
+    }
+  }
+
+  function buildUrl(baseUrl, page, limit) {
+    const url = new URL(baseUrl.replace(/\/+$/, '') + '/leads');
+    url.searchParams.set('page', page);
+    url.searchParams.set('limit', limit);
+    return url.toString();
+  }
+
+  async function fetchPage(config, page) {
+    await throttle(config.rateMax, config.rateWindow);
+
+    let response;
+    try {
+      response = await fetch(buildUrl(config.baseUrl, page, config.limit), {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ' + config.token,
+          'X-API-Token': config.token,
+        },
+      });
+    } catch (e) {
+      log(`Page ${page}: network error (${e.message})`, 'err');
+      return null;
+    }
+
+    if (response.status === 429) {
+      log(`Page ${page}: rate limited (429)`, 'warn');
+      return null;
+    }
+
+    if (!response.ok) {
+      log(`Page ${page}: HTTP ${response.status}`, 'err');
+      return null;
+    }
+
+    let json;
+    try {
+      json = await response.json();
+    } catch (e) {
+      log(`Page ${page}: could not parse JSON`, 'err');
+      return null;
+    }
+
+    if (!json || !Array.isArray(json.data)) {
+      log(`Page ${page}: unexpected response shape`, 'err');
+      return null;
+    }
+
+    return json;
+  }
+
+  async function fetchPageWithRetry(config, page, stats) {
+    const backoffs = [1000, 2000, 4000];
+
+    for (let attempt = 0; attempt < backoffs.length; attempt++) {
+      if (stopRequested) return null;
+
+      const result = await fetchPage(config, page);
+      if (result !== null) return result;
+
+      stats.retries++;
+      statRetries.textContent = stats.retries;
+      await sleep(backoffs[attempt]);
+    }
+
+    log(`Page ${page}: gave up after ${backoffs.length} attempts`, 'err');
+    return null;
+  }
+
+  function upsertLeads(rows) {
+    for (const raw of rows) {
+      if (!raw || !raw.email) continue;
+      leadsByEmail.set(raw.email, {
+        first_name: raw.first_name ?? '',
+        last_name: raw.last_name ?? '',
+        email: raw.email,
+        email_status: raw.email_status ?? '',
+        company_name: raw.company_name ?? '',
+        position_title: raw.position_title ?? '',
+        location: raw.location ?? '',
+      });
+    }
+  }
+
+  function renderResults() {
+    const leads = Array.from(leadsByEmail.values());
+    statLeads.textContent = leads.length;
+
+    resultsBody.innerHTML = '';
+    emptyState.style.display = leads.length ? 'none' : 'block';
+
+    // Only render the latest 500 rows for performance; downloads include everything.
+    const toRender = leads.slice(-500);
+    const frag = document.createDocumentFragment();
+
+    for (const lead of toRender) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(lead.first_name)}</td>
+        <td>${escapeHtml(lead.last_name)}</td>
+        <td>${escapeHtml(lead.email)}</td>
+        <td>${escapeHtml(lead.company_name)}</td>
+        <td>${escapeHtml(lead.position_title)}</td>
+        <td>${escapeHtml(lead.location)}</td>
+        <td>${escapeHtml(lead.email_status)}</td>
+      `;
+      frag.appendChild(tr);
+    }
+
+    resultsBody.appendChild(frag);
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+
+  function updateProgress(done, total) {
+    statPages.textContent = `${done} / ${total || '?'}`;
+    if (total) {
+      progressBar.value = done;
+      progressBar.max = total;
+    } else {
+      progressBar.removeAttribute('value');
+    }
+  }
+
+  async function runPool(pages, concurrency, worker) {
+    let cursor = 0;
+    const next = () => (cursor < pages.length ? pages[cursor++] : null);
+
+    async function runWorker() {
+      let page;
+      while ((page = next()) !== null) {
+        if (stopRequested) return;
+        await worker(page);
+      }
+    }
+
+    const workers = Array.from({ length: Math.min(concurrency, pages.length) }, runWorker);
+    await Promise.all(workers);
+  }
+
+  async function sync(config) {
+    const stats = { retries: 0, failedPages: [] };
+    let done = 0;
+    let total = null;
+
+    phaseLabel.textContent = 'Fetching page 1…';
+    log(`Fetching page 1 to determine total pages…`);
+
+    const first = await fetchPageWithRetry(config, 1, stats);
+    if (!first) {
+      phaseLabel.textContent = 'Failed';
+      log('Could not fetch page 1 — aborting.', 'err');
+      return;
+    }
+
+    upsertLeads(first.data);
+    done = 1;
+    total = first.meta && first.meta.last_page ? first.meta.last_page : null;
+    updateProgress(done, total);
+    renderResults();
+
+    if (total) {
+      log(`Total pages: ${total}. Fetching the rest with concurrency ${config.concurrency}…`, 'ok');
+      phaseLabel.textContent = `Fetching pages 2–${total}…`;
+
+      const remaining = [];
+      for (let p = 2; p <= total; p++) remaining.push(p);
+
+      await runPool(remaining, config.concurrency, async (page) => {
+        const result = await fetchPageWithRetry(config, page, stats);
+        if (stopRequested) return;
+
+        if (result === null) {
+          stats.failedPages.push(page);
+          statFailed.textContent = stats.failedPages.length;
+        } else {
+          upsertLeads(result.data);
+        }
+
+        done++;
+        updateProgress(done, total);
+        renderResults();
+      });
+    } else {
+      // Fallback: sequential loop until an empty page or the max-pages cap.
+      log('No meta.last_page in the response — looping sequentially until an empty page.', 'warn');
+      phaseLabel.textContent = 'Fetching (unknown total)…';
+
+      for (let page = 2; page <= config.maxPages; page++) {
+        if (stopRequested) break;
+
+        const result = await fetchPageWithRetry(config, page, stats);
+        if (result === null) {
+          stats.failedPages.push(page);
+          statFailed.textContent = stats.failedPages.length;
+          break;
+        }
+        if (result.data.length === 0) break;
+
+        upsertLeads(result.data);
+        done++;
+        updateProgress(done, null);
+        renderResults();
+      }
+    }
+
+    phaseLabel.textContent = stopRequested ? 'Stopped' : 'Done';
+    log(
+      stopRequested
+        ? `Stopped early. ${leadsByEmail.size} unique leads collected so far.`
+        : `Finished. ${leadsByEmail.size} unique leads, ${stats.failedPages.length} failed page(s), ${stats.retries} retr${stats.retries === 1 ? 'y' : 'ies'}.`,
+      stopRequested ? 'warn' : 'ok'
+    );
+
+    if (stats.failedPages.length) {
+      log(`Failed pages: ${stats.failedPages.join(', ')}`, 'err');
+    }
+
+    downloadJsonBtn.disabled = leadsByEmail.size === 0;
+    downloadCsvBtn.disabled = leadsByEmail.size === 0;
+  }
+
+  function readConfig() {
+    return {
+      baseUrl: $('baseUrl').value.trim(),
+      token: $('token').value.trim(),
+      limit: parseInt($('limit').value, 10) || 100,
+      concurrency: parseInt($('concurrency').value, 10) || 15,
+      rateMax: parseInt($('rateMax').value, 10) || 60,
+      rateWindow: parseInt($('rateWindow').value, 10) || 60,
+      maxPages: parseInt($('maxPages').value, 10) || 500,
+    };
+  }
+
+  startBtn.addEventListener('click', async () => {
+    const config = readConfig();
+
+    if (!config.baseUrl) {
+      log('Enter an API base URL first.', 'err');
+      return;
+    }
+
+    stopRequested = false;
+    leadsByEmail = new Map();
+    requestTimestamps = [];
+    logEl.innerHTML = '';
+    statPages.textContent = '0 / 0';
+    statLeads.textContent = '0';
+    statRetries.textContent = '0';
+    statFailed.textContent = '0';
+    progressBar.value = 0;
+    downloadJsonBtn.disabled = true;
+    downloadCsvBtn.disabled = true;
+    renderResults();
+
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+
+    try {
+      await sync(config);
+    } catch (e) {
+      log('Unexpected error: ' + e.message, 'err');
+      phaseLabel.textContent = 'Error';
+    } finally {
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+  });
+
+  stopBtn.addEventListener('click', () => {
+    stopRequested = true;
+    log('Stop requested — finishing in-flight requests…', 'warn');
+  });
+
+  function download(filename, content, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  downloadJsonBtn.addEventListener('click', () => {
+    const leads = Array.from(leadsByEmail.values());
+    download('leads.json', JSON.stringify(leads, null, 2), 'application/json');
+  });
+
+  downloadCsvBtn.addEventListener('click', () => {
+    const leads = Array.from(leadsByEmail.values());
+    const cols = ['first_name', 'last_name', 'email', 'email_status', 'company_name', 'position_title', 'location'];
+    const rows = [cols.join(',')];
+    for (const lead of leads) {
+      rows.push(cols.map((c) => `"${String(lead[c] ?? '').replace(/"/g, '""')}"`).join(','));
+    }
+    download('leads.csv', rows.join('\n'), 'text/csv');
+  });
+})();
+</script>
+
+</body>
+</html>

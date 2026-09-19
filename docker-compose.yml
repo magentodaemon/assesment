@@ -1,0 +1,61 @@
+services:
+  # ----------------------------------------------------
+  # Web App Service (PHP 8.5 + Apache)
+  # ----------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: php_app_server
+    restart: unless-stopped
+    ports:
+      - "8080:80"                      # Access your app at http://localhost:8080
+    volumes:
+      - .:/var/www/html                # Mounts your current directory into the container
+    environment:
+      - DB_HOST=db                     # Must match the database service name below
+      - DB_NAME=app_db
+      - DB_USER=app_user
+      - DB_PASSWORD=app_secure_password
+    depends_on:
+      db:
+        condition: service_healthy     # Waits for the DB to be completely ready before launching
+
+  # ----------------------------------------------------
+  # Database Service (MySQL 8.4 LTS)
+  # ----------------------------------------------------
+  db:
+    image: mysql:8.4
+    container_name: php_db_server
+    restart: unless-stopped
+    ports:
+      - "3306:3306"                    # Allows optional connections from local GUI apps
+    environment:
+      MYSQL_ROOT_PASSWORD: root_super_secret_pass
+      MYSQL_DATABASE: app_db
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_secure_password
+    volumes:
+      - mysql_persistent_data:/var/lib/mysql
+    healthcheck:                       # Tells Docker when MySQL is actually ready to handle queries
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------
+  # Visual DB Client Service (phpMyAdmin)
+  # ----------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: php_myadmin_ui
+    restart: unless-stopped
+    ports:
+      - "8081:80"                      # Access the dashboard at http://localhost:8081
+    environment:
+      - PMA_HOST=db
+    depends_on:
+      - db
+
+# Persistent local volume so you don't lose data when stopping containers
+volumes:
+  mysql_persistent_data:
